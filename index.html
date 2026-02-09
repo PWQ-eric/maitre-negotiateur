@@ -1158,6 +1158,20 @@
     </style>
 </head>
 <body>
+    <script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+
+const app = initializeApp({
+    apiKey: "AIzaSyCpJ0YXGtYBiZuZCzVfX6DX6p_Zd1ufx0g",
+    authDomain: "maitre-negociateur.firebaseapp.com",
+    projectId: "maitre-negociateur"
+});
+
+onAuthStateChanged(getAuth(app), (user) => {
+    if (!user) window.location.href = 'login.html';
+});
+</script>
     <div class="background-pattern"></div>
     
     <div class="container">
