@@ -2069,6 +2069,19 @@ onAuthStateChanged(auth, async (user) => {
     } else {
         currentUser = user;
         
+        // Vérifier onboarding
+        const userDoc = await getDoc(doc(db, 'users', user.uid));
+        if (!userDoc.exists() || !userDoc.data().settings?.onboardingCompleted) {
+            window.location.href = 'onboarding.html';
+            return;
+        }
+        
+        // Charger les paramètres
+        const settings = userDoc.data().settings;
+        currentLanguage = settings.language || 'fr';
+        currentCurrency = settings.currency || 'eur';
+        updateUILanguage();
+        
         const userEmailEl = document.getElementById('user-email');
         if (userEmailEl) userEmailEl.textContent = user.email;
 
@@ -4202,6 +4215,7 @@ generateScenarioImage(gameState.scenarioType);
                         playerName: gameState.characters.player.name,
                         opponentName: gameState.characters.opponent.name,
                         opponentPersonality: gameState.characters.opponent.personality
+                        language: currentLanguage || playerProfile.settings?.language || 'fr'
                     })
                 });
 
