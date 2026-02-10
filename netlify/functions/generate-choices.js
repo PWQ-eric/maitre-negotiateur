@@ -1,4 +1,6 @@
-const Anthropic = require('@anthropic-ai/sdk');
+🎯 FICHIER generate-choices.js COMPLET ET ADAPTÉ
+Voici le fichier qui respecte vos paramètres (situation, dialogue, techniques, etc.) ET ajoute le support multilingue :
+javascriptconst Anthropic = require('@anthropic-ai/sdk');
 
 exports.handler = async function(event, context) {
     if (event.httpMethod !== 'POST') {
@@ -9,69 +11,107 @@ exports.handler = async function(event, context) {
     }
 
     try {
-        const { scenario, previousChoices, relationship, language } = JSON.parse(event.body);
+        const { 
+            situation, 
+            dialogue, 
+            techniques, 
+            playerName, 
+            opponentName, 
+            opponentPersonality,
+            language 
+        } = JSON.parse(event.body);
         
         const isEnglish = language === 'en';
         
-        // Construire l'historique
-        let history = '';
-        if (previousChoices && previousChoices.length > 0) {
-            history = isEnglish 
-                ? '\n\nPrevious choices made:\n' + previousChoices.map((c, i) => `${i + 1}. ${c}`).join('\n')
-                : '\n\nChoix précédents effectués :\n' + previousChoices.map((c, i) => `${i + 1}. ${c}`).join('\n');
+        // Construire le contexte des techniques utilisées
+        let techniquesContext = '';
+        if (techniques && techniques.length > 0) {
+            techniquesContext = isEnglish 
+                ? `\n\nTechniques already used: ${techniques.join(', ')}`
+                : `\n\nTechniques déjà utilisées : ${techniques.join(', ')}`;
+        }
+
+        // Construire le dialogue
+        let dialogueContext = '';
+        if (dialogue) {
+            dialogueContext = isEnglish 
+                ? `\n\nCurrent dialogue:\n${dialogue}`
+                : `\n\nDialogue actuel :\n${dialogue}`;
         }
 
         // Prompts multilingues
         const prompts = {
             fr: {
-                system: "Tu es un expert en négociation. Génère des choix stratégiques réalistes basés sur des techniques de négociation éprouvées.",
-                user: `Situation : ${scenario.situation}
-Relation actuelle : ${relationship}%${history}
+                system: "Tu es un expert en négociation. Génère des choix stratégiques réalistes basés sur des techniques de négociation éprouvées. Les choix doivent être adaptés à la personnalité de l'interlocuteur et à la situation.",
+                user: `Situation de négociation :
+${situation}
+
+Personnages :
+- Joueur : ${playerName}
+- Interlocuteur : ${opponentName}${opponentPersonality ? ` (Personnalité : ${opponentPersonality})` : ''}
+${dialogueContext}
+${techniquesContext}
 
 Génère 4 choix de négociation DIFFÉRENTS. Chaque choix doit :
-- Être une phrase d'action concrète (pas de description)
-- Utiliser une technique différente (empathie, ancrage, BATNA, concession, etc.)
+- Être une phrase d'action concrète que ${playerName} peut dire ou faire
+- Utiliser une technique de négociation différente (empathie tactique, ancrage, BATNA, concession stratégique, recadrage, silence stratégique, questions ouvertes, etc.)
+- Éviter de réutiliser les techniques déjà employées
+- Tenir compte de la personnalité de ${opponentName}
 - Avoir un impact distinct sur la relation et la pression
 
-Format JSON requis :
+Format JSON STRICT requis :
 {
   "choices": [
     {
-      "text": "Action concrète à entreprendre",
+      "text": "Ce que ${playerName} dit ou fait (phrase directe, max 150 caractères)",
       "technique": "Nom de la technique utilisée",
-      "relationship_impact": -10 à +10,
-      "pressure_impact": -15 à +15,
-      "score_potential": 50 à 150
+      "relationship_impact": nombre entre -10 et +10,
+      "pressure_impact": nombre entre -15 et +15,
+      "score_potential": nombre entre 50 et 150
     }
   ]
 }
 
-Les 4 choix doivent représenter différentes approches (collaborative, assertive, conciliante, créative).`
+IMPORTANT : 
+- Les 4 choix doivent représenter des approches variées (collaborative, assertive, conciliante, créative)
+- Adapte les choix à la personnalité de l'interlocuteur
+- Retourne UNIQUEMENT le JSON, sans texte avant ou après`
             },
             en: {
-                system: "You are a negotiation expert. Generate realistic strategic choices based on proven negotiation techniques.",
-                user: `Situation: ${scenario.situation}
-Current relationship: ${relationship}%${history}
+                system: "You are a negotiation expert. Generate realistic strategic choices based on proven negotiation techniques. Choices must be adapted to the counterpart's personality and the situation.",
+                user: `Negotiation situation:
+${situation}
+
+Characters:
+- Player: ${playerName}
+- Counterpart: ${opponentName}${opponentPersonality ? ` (Personality: ${opponentPersonality})` : ''}
+${dialogueContext}
+${techniquesContext}
 
 Generate 4 DIFFERENT negotiation choices. Each choice must:
-- Be a concrete action phrase (not a description)
-- Use a different technique (empathy, anchoring, BATNA, concession, etc.)
+- Be a concrete action phrase that ${playerName} can say or do
+- Use a different negotiation technique (tactical empathy, anchoring, BATNA, strategic concession, reframing, strategic silence, open questions, etc.)
+- Avoid reusing techniques already employed
+- Take into account ${opponentName}'s personality
 - Have a distinct impact on relationship and pressure
 
-Required JSON format:
+STRICT JSON format required:
 {
   "choices": [
     {
-      "text": "Concrete action to take",
+      "text": "What ${playerName} says or does (direct phrase, max 150 characters)",
       "technique": "Name of technique used",
-      "relationship_impact": -10 to +10,
-      "pressure_impact": -15 to +15,
-      "score_potential": 50 to 150
+      "relationship_impact": number between -10 and +10,
+      "pressure_impact": number between -15 and +15,
+      "score_potential": number between 50 and 150
     }
   ]
 }
 
-The 4 choices must represent different approaches (collaborative, assertive, conciliatory, creative).`
+IMPORTANT:
+- The 4 choices must represent varied approaches (collaborative, assertive, conciliatory, creative)
+- Adapt choices to the counterpart's personality
+- Return ONLY the JSON, with no text before or after`
             }
         };
         
@@ -83,7 +123,7 @@ The 4 choices must represent different approaches (collaborative, assertive, con
 
         const message = await anthropic.messages.create({
             model: 'claude-sonnet-4-20250514',
-            max_tokens: 1024,
+            max_tokens: 1500,
             system: promptSet.system,
             messages: [{
                 role: 'user',
@@ -95,10 +135,16 @@ The 4 choices must represent different approaches (collaborative, assertive, con
         const jsonMatch = responseText.match(/\{[\s\S]*\}/);
         
         if (!jsonMatch) {
-            throw new Error('Invalid response format');
+            console.error('Invalid response format:', responseText);
+            throw new Error('Invalid response format from AI');
         }
 
         const data = JSON.parse(jsonMatch[0]);
+
+        // Validation basique
+        if (!data.choices || !Array.isArray(data.choices) || data.choices.length === 0) {
+            throw new Error('Invalid choices format');
+        }
 
         return {
             statusCode: 200,
@@ -110,7 +156,7 @@ The 4 choices must represent different approaches (collaborative, assertive, con
         };
 
     } catch (error) {
-        console.error('Error:', error);
+        console.error('Error generating choices:', error);
         return {
             statusCode: 500,
             body: JSON.stringify({ 
