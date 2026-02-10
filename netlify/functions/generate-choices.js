@@ -1,93 +1,121 @@
-exports.handler = async (event, context) => {
-    const headers = {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS',
-        'Content-Type': 'application/json'
-    };
+const Anthropic = require('@anthropic-ai/sdk');
 
-    if (event.httpMethod === 'OPTIONS') {
-        return { statusCode: 200, headers, body: '' };
-    }
-
+exports.handler = async function(event, context) {
     if (event.httpMethod !== 'POST') {
         return {
             statusCode: 405,
-            headers,
             body: JSON.stringify({ error: 'Method not allowed' })
         };
     }
 
     try {
-        const apiKey = process.env.ANTHROPIC_API_KEY;
+        const { scenario, previousChoices, relationship, language } = JSON.parse(event.body);
         
-        if (!apiKey) {
-            throw new Error('Clé API manquante');
+        const isEnglish = language === 'en';
+        
+        // Construire l'historique
+        let history = '';
+        if (previousChoices && previousChoices.length > 0) {
+            history = isEnglish 
+                ? '\n\nPrevious choices made:\n' + previousChoices.map((c, i) => `${i + 1}. ${c}`).join('\n')
+                : '\n\nChoix précédents effectués :\n' + previousChoices.map((c, i) => `${i + 1}. ${c}`).join('\n');
         }
 
-        const { situation, dialogue, techniques, playerName, opponentName, opponentPersonality } = JSON.parse(event.body);
+        // Prompts multilingues
+        const prompts = {
+            fr: {
+                system: "Tu es un expert en négociation. Génère des choix stratégiques réalistes basés sur des techniques de négociation éprouvées.",
+                user: `Situation : ${scenario.situation}
+Relation actuelle : ${relationship}%${history}
 
-        const techniquesText = techniques.join(', ');
+Génère 4 choix de négociation DIFFÉRENTS. Chaque choix doit :
+- Être une phrase d'action concrète (pas de description)
+- Utiliser une technique différente (empathie, ancrage, BATNA, concession, etc.)
+- Avoir un impact distinct sur la relation et la pression
 
-        const prompt = `Tu es un expert en négociation. Pour cette situation, crée 5 choix de réponse possibles présentés comme des DIALOGUES ou ACTIONS que le joueur peut prendre. CONTEXTE : Joueur : ${playerName}, Interlocuteur : ${opponentName} (${opponentPersonality || 'professionnel'}), Dernier dialogue : "${dialogue || ''}". SITUATION ACTUELLE : ${situation}. TECHNIQUES À INTÉGRER : ${techniquesText}. IMPORTANT - Distribution des choix : TOUS les 5 choix doivent avoir une technique associée. Distribution de qualité obligatoire : 1-2 "bad", 1-2 "medium", 2-3 "excellent". Les meilleurs choix (excellent) doivent utiliser les techniques sélectionnées : ${techniquesText}. Crée 5 options de réponse/action sous forme de DIALOGUES DIRECTS ou ACTIONS narratives. Réponds UNIQUEMENT en JSON (sans texte avant/après, guillemets simples) : {"choices": [{"text": "Votre réplique ou action (dialogue direct, 2-3 phrases naturelles)", "preview": "Conséquence probable de ce choix (1 phrase)", "technique": "ID technique parmi batna/zopa/ancrage/miroir/silence/ecoute-active/harvard/concessions/empathie-tactique/preparation", "quality": "excellent/medium/bad", "feedback": "Explication experte (2-3 phrases)", "emotion": "emoji représentant l'émotion"}]}`;
+Format JSON requis :
+{
+  "choices": [
+    {
+      "text": "Action concrète à entreprendre",
+      "technique": "Nom de la technique utilisée",
+      "relationship_impact": -10 à +10,
+      "pressure_impact": -15 à +15,
+      "score_potential": 50 à 150
+    }
+  ]
+}
 
-        const response = await fetch('https://api.anthropic.com/v1/messages', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'x-api-key': apiKey,
-                'anthropic-version': '2023-06-01'
+Les 4 choix doivent représenter différentes approches (collaborative, assertive, conciliante, créative).`
             },
-            body: JSON.stringify({
-                model: 'claude-sonnet-4-20250514',
-                max_tokens: 3000,
-                messages: [
-                    { role: 'user', content: prompt }
-                ]
-            })
+            en: {
+                system: "You are a negotiation expert. Generate realistic strategic choices based on proven negotiation techniques.",
+                user: `Situation: ${scenario.situation}
+Current relationship: ${relationship}%${history}
+
+Generate 4 DIFFERENT negotiation choices. Each choice must:
+- Be a concrete action phrase (not a description)
+- Use a different technique (empathy, anchoring, BATNA, concession, etc.)
+- Have a distinct impact on relationship and pressure
+
+Required JSON format:
+{
+  "choices": [
+    {
+      "text": "Concrete action to take",
+      "technique": "Name of technique used",
+      "relationship_impact": -10 to +10,
+      "pressure_impact": -15 to +15,
+      "score_potential": 50 to 150
+    }
+  ]
+}
+
+The 4 choices must represent different approaches (collaborative, assertive, conciliatory, creative).`
+            }
+        };
+        
+        const promptSet = isEnglish ? prompts.en : prompts.fr;
+
+        const anthropic = new Anthropic({
+            apiKey: process.env.ANTHROPIC_API_KEY
         });
 
-        if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`API Claude erreur: ${response.status} - ${errorText}`);
+        const message = await anthropic.messages.create({
+            model: 'claude-sonnet-4-20250514',
+            max_tokens: 1024,
+            system: promptSet.system,
+            messages: [{
+                role: 'user',
+                content: promptSet.user
+            }]
+        });
+
+        const responseText = message.content[0].text;
+        const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+        
+        if (!jsonMatch) {
+            throw new Error('Invalid response format');
         }
 
-        const data = await response.json();
-        const content = data.content.find(c => c.type === 'text')?.text || '';
-        
-        let jsonText = content.trim();
-        jsonText = jsonText.replace(/```json\s*/g, '').replace(/```\s*/g, '');
-        
-        const firstBrace = jsonText.indexOf('{');
-        if (firstBrace > 0) {
-            jsonText = jsonText.substring(firstBrace);
-        }
-        
-        const lastBrace = jsonText.lastIndexOf('}');
-        if (lastBrace !== -1 && lastBrace < jsonText.length - 1) {
-            jsonText = jsonText.substring(0, lastBrace + 1);
-        }
-
-        const parsed = JSON.parse(jsonText);
-        
-        if (!parsed.choices || parsed.choices.length !== 5) {
-            throw new Error('Format de choix invalide - 5 choix requis');
-        }
+        const data = JSON.parse(jsonMatch[0]);
 
         return {
             statusCode: 200,
-            headers,
-            body: JSON.stringify({ success: true, choices: parsed.choices })
+            body: JSON.stringify(data),
+            headers: {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*'
+            }
         };
 
     } catch (error) {
-        console.error('Erreur:', error);
+        console.error('Error:', error);
         return {
             statusCode: 500,
-            headers,
             body: JSON.stringify({ 
-                success: false, 
-                error: error.message 
+                error: 'Failed to generate choices',
+                details: error.message 
             })
         };
     }
