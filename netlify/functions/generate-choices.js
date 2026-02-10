@@ -1,5 +1,3 @@
-🎯 FICHIER generate-choices.js COMPLET ET ADAPTÉ
-Voici le fichier qui respecte vos paramètres (situation, dialogue, techniques, etc.) ET ajoute le support multilingue :
 javascriptconst Anthropic = require('@anthropic-ai/sdk');
 
 exports.handler = async function(event, context) {
