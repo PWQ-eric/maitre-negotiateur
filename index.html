@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Maître Négociateur</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;0,700;1,400&family=Playfair+Display:wght@700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════
+     VIEW: ENV-SELECT — Choix de l'environnement
+═══════════════════════════════════════════════════════ -->
+<div id="view-env-select" class="view active">
+  <div class="env-select-container">
+    <div class="env-logo">
+      <span class="env-logo-icon">🤝</span>
+      <h1 class="env-logo-title">Maître Négociateur</h1>
+      <p class="env-logo-sub">Maîtrisez l'art de la négociation</p>
+    </div>
+    <div class="env-cards">
+      <div class="env-card" onclick="selectPersonal()">
+        <div class="env-card-icon">👤</div>
+        <h2>Mode Personnel</h2>
+        <p>Entraînement libre, à votre rythme. 9 catégories de scénarios.</p>
+        <button class="btn btn-navy">Commencer</button>
+      </div>
+      <div class="env-card" onclick="showCodeEntry()">
+        <div class="env-card-icon">🏢</div>
+        <h2>J'ai un code entreprise</h2>
+        <p>Mon entreprise m'a invité à me former.</p>
+        <button class="btn btn-gold">Entrer mon code</button>
+      </div>
+    </div>
+    <p class="env-manager-link" onclick="showView('view-manager-setup')">Vous êtes gestionnaire ? <span>Créer un espace entreprise →</span></p>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     VIEW: CODE-ENTRY — Code d'accès entreprise
+═══════════════════════════════════════════════════════ -->
+<div id="view-code-entry" class="view">
+  <div class="simple-container">
+    <button class="btn-back" onclick="showView('view-env-select')">← Retour</button>
+    <h1>Code d'accès entreprise</h1>
+    <p>Entrez le code à 8 caractères reçu par email de votre gestionnaire.</p>
+    <div class="code-input-group">
+      <input type="text" id="accessCodeInput" maxlength="8" placeholder="XXXX-XXXX" class="code-input" oninput="this.value=this.value.toUpperCase()">
+      <button class="btn btn-navy" onclick="validateAccessCode()">Valider</button>
+    </div>
+    <div id="codeError" class="error-msg hidden"></div>
+    <div id="codeLoading" class="loading-text hidden">Vérification en cours...</div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     VIEW: MENU — Choix du scénario
+═══════════════════════════════════════════════════════ -->
+<div id="view-menu" class="view">
+  <header class="app-header">
+    <div class="header-left">
+      <span class="app-title">🤝 Maître Négociateur</span>
+    </div>
+    <div class="context-toggle hidden" id="contextToggle">
+      <button class="ctx-btn active" id="ctxPersonal" onclick="switchContext('personal')">👤 Personnel</button>
+      <button class="ctx-btn" id="ctxEnterprise" onclick="switchContext('enterprise')">🏢 <span id="ctxCompanyName">Entreprise</span></button>
+    </div>
+    <div class="header-right">
+      <div class="hud-xp" id="hudXP">
+        <span class="hud-level">Niv. <span id="hudLevel">1</span></span>
+        <div class="xp-bar-mini"><div class="xp-fill-mini" id="xpFillMini"></div></div>
+        <span class="hud-xp-text"><span id="hudXPVal">0</span> XP</span>
+      </div>
+      <button class="btn-icon" onclick="showView('view-techniques-glossary')" title="Techniques">📚</button>
+      <button class="btn-icon" onclick="showView('view-badges')" title="Badges">🏆</button>
+      <button class="btn-icon" onclick="showView('view-profile')" title="Profil">👤</button>
+    </div>
+  </header>
+
+  <main class="menu-main">
+    <div class="menu-hero">
+      <h2 class="menu-title" id="menuTitle">Choisissez votre scénario</h2>
+      <p class="menu-sub" id="menuSub">Sélectionnez une catégorie de négociation</p>
+    </div>
+    <div class="categories-grid" id="categoriesGrid">
+      <!-- Généré dynamiquement -->
+    </div>
+    <div class="menu-stats-bar">
+      <span>🔥 Série : <strong id="menuStreak">0</strong> jours</span>
+      <span>⭐ Score moyen : <strong id="menuAvgScore">—</strong></span>
+      <span>🎮 Parties : <strong id="menuGamesPlayed">0</strong></span>
+      <span id="modeTeaser" class="mode-teaser hidden"></span>
+    </div>
+  </main>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     VIEW: LOADING — Génération du scénario
+═══════════════════════════════════════════════════════ -->
+<div id="view-loading" class="view">
+  <div class="loading-container">
+    <div class="loading-spinner">🤝</div>
+    <h2 class="loading-title">Création de votre scénario</h2>
+    <div class="loading-steps" id="loadingSteps">
+      <div class="loading-step" id="lstep0">⏳ Analyse du type de négociation...</div>
+      <div class="loading-step" id="lstep1">⏳ Création des personnages...</div>
+      <div class="loading-step" id="lstep2">⏳ Définition des enjeux...</div>
+      <div class="loading-step" id="lstep3">⏳ Contexte narratif...</div>
+      <div class="loading-step" id="lstep4">⏳ Dialogues réalistes...</div>
+      <div class="loading-step" id="lstep5">⏳ Étapes de négociation...</div>
+      <div class="loading-step" id="lstep6">⏳ Calibrage des techniques...</div>
+      <div class="loading-step" id="lstep7">⏳ Finalisation...</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     VIEW: NEGOTIATION — Jeu principal
+═══════════════════════════════════════════════════════ -->
+<div id="view-negotiation" class="view">
+  <header class="game-header">
+    <button class="btn-back-sm" onclick="confirmQuit()">✕ Quitter</button>
+    <div class="game-hud">
+      <span class="hud-scenario-type" id="hudScenarioType"></span>
+      <span class="hud-step" id="hudStep">Étape 1 / ?</span>
+      <span class="hud-score-live">Score : <strong id="hudScoreLive">—</strong></span>
+    </div>
+    <div class="hud-xp-mini">Niv.<strong id="hudLevelGame">1</strong></div>
+  </header>
+
+  <div class="game-layout">
+    <!-- Colonne gauche : Joueur -->
+    <aside class="panel-player">
+      <div class="panel-avatar">
+        <div class="avatar-circle" id="playerAvatarPanel">👤</div>
+        <div class="panel-name" id="playerNamePanel">Vous</div>
+        <div class="panel-role" id="playerRolePanel"></div>
+      </div>
+      <div class="panel-stats">
+        <div class="stat-bar-row">
+          <span>💪 Confiance</span>
+          <div class="stat-bar"><div class="stat-fill confidence" id="statConfidence"></div></div>
+        </div>
+        <div class="stat-bar-row">
+          <span>⭐ Crédibilité</span>
+          <div class="stat-bar"><div class="stat-fill credibility" id="statCredibility"></div></div>
+        </div>
+        <div class="stat-bar-row">
+          <span>🤝 Relation</span>
+          <div class="stat-bar"><div class="stat-fill relation" id="statRelation"></div></div>
+        </div>
+      </div>
+      <div class="panel-techs-active">
+        <div class="panel-techs-label">Techniques actives :</div>
+        <div id="activeTechTags"></div>
+      </div>
+    </aside>
+
+    <!-- Zone centrale -->
+    <main class="game-center">
+      <!-- Fenêtre de scène -->
+      <div class="scene-window" id="sceneWindow">
+        <div class="scene-location" id="sceneLocation"></div>
+        <div class="scene-avatars">
+          <div class="scene-player">
+            <div class="scene-avatar player-scene-avatar" id="playerSceneAvatar">👤</div>
+            <span class="scene-label" id="scenePlayerLabel">Vous</span>
+          </div>
+          <div class="scene-symbol" id="sceneSymbol">⚔</div>
+          <div class="scene-opponent">
+            <div class="scene-avatar" id="opponentSceneAvatar">🧑‍💼</div>
+            <span class="scene-label" id="sceneOpponentLabel">Adversaire</span>
+          </div>
+        </div>
+        <div class="scene-tension" id="sceneTension"></div>
+        <div class="scene-step-indicator" id="sceneStepIndicator">Étape 1 / ?</div>
+      </div>
+
+      <!-- Phase : Situation (Moment 1) -->
+      <div class="game-phase" id="phaseSituation">
+        <div class="opponent-speech-bubble" id="opponentSpeech"></div>
+        <div class="situation-text" id="situationText"></div>
+        <button class="btn btn-navy btn-lg" onclick="showTechSelection()">Choisir mes techniques →</button>
+      </div>
+
+      <!-- Phase : Sélection techniques (Moment 2) -->
+      <div class="game-phase hidden" id="phaseTechs">
+        <h3 class="phase-title">Choisissez 2 à 3 techniques</h3>
+        <div class="tech-counter" id="techCounter">0 / 3 choisies</div>
+        <div class="techs-grid" id="techsGrid"></div>
+        <button class="btn btn-navy btn-lg" id="btnGenerateResponses" disabled onclick="generateResponses()">
+          Générer mes réponses →
+        </button>
+      </div>
+
+      <!-- Phase : Génération des réponses -->
+      <div class="game-phase hidden" id="phaseGenerating">
+        <div class="generating-spinner">🧠 L'IA génère vos réponses...</div>
+      </div>
+
+      <!-- Phase : Choix de réponse (Moments 3 & 4) -->
+      <div class="game-phase hidden" id="phaseResponses">
+        <h3 class="phase-title">Choisissez votre réponse</h3>
+        <div class="responses-list" id="responsesList"></div>
+        <button class="btn btn-navy btn-lg hidden" id="btnConfirm" onclick="confirmChoice()">
+          Confirmer cette réponse →
+        </button>
+      </div>
+
+      <!-- Phase : Feedback (Moment 5) -->
+      <div class="game-phase hidden" id="phaseFeedback">
+        <div class="step-score-ring" id="stepScoreRing">
+          <div class="score-number" id="stepScoreNum">—</div>
+          <div class="score-label">/ 100</div>
+        </div>
+        <div class="feedback-text" id="feedbackText"></div>
+        <div class="disruption-reveal hidden" id="disruptionReveal">
+          <div class="disruption-title">⚡ Ce que vous ne saviez pas</div>
+          <div class="disruption-text" id="disruptionText"></div>
+        </div>
+        <button class="btn btn-navy btn-lg" id="btnNextStep" onclick="nextStep()">
+          Étape suivante →
+        </button>
+      </div>
+    </main>
+
+    <!-- Colonne droite : Adversaire -->
+    <aside class="panel-opponent">
+      <div class="panel-avatar">
+        <div class="avatar-circle opponent-avatar" id="opponentAvatarPanel">🧑‍💼</div>
+        <div class="panel-name" id="opponentNamePanel">Adversaire</div>
+        <div class="panel-role" id="opponentRolePanel"></div>
+      </div>
+      <div class="mood-section">
+        <div class="mood-label">Humeur :</div>
+        <div class="mood-bar-container">
+          <div class="mood-bar" id="moodBar"></div>
+        </div>
+        <div class="mood-text" id="moodText">Neutre</div>
+      </div>
+      <div class="disruption-indicator hidden" id="disruptionIndicator">
+        <span>⚡</span> Quelque chose a changé...
+      </div>
+      <div class="opponent-profile" id="opponentProfile">
+        <div class="profile-label">Profil :</div>
+        <div class="profile-traits" id="profileTraits"></div>
+      </div>
+      <div class="speech-bubble-small" id="opponentMiniSpeech"></div>
+    </aside>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     VIEW: RESULT — Résumé éducatif de fin de partie
+═══════════════════════════════════════════════════════ -->
+<div id="view-result" class="view">
+  <div class="result-container">
+    <div class="result-header" id="resultHeader">
+      <div class="result-score-big" id="resultScoreBig">—</div>
+      <div class="result-stars" id="resultStars">⭐⭐⭐</div>
+      <div class="result-outcome" id="resultOutcome">Négociation réussie !</div>
+    </div>
+
+    <div class="result-narrative" id="resultNarrative">
+      <div class="section-title">📖 Résumé de la négociation</div>
+      <p id="narrativeText">Chargement...</p>
+    </div>
+
+    <div class="result-steps-review" id="resultStepsReview">
+      <div class="section-title">🔍 Revue étape par étape</div>
+      <div id="stepsReviewList"></div>
+    </div>
+
+    <div class="result-best-alt" id="resultBestAlt">
+      <div class="section-title">💡 Ce que vous auriez pu faire de mieux</div>
+      <div id="bestAltContent"></div>
+    </div>
+
+    <div class="result-recommendation" id="resultRecommendation">
+      <div class="section-title">🎯 Axe de travail prioritaire</div>
+      <p id="recommendationText"></p>
+    </div>
+
+    <div class="result-mode-this-game" id="resultMode">
+      <div class="section-title">🧠 Votre mode dans cette partie</div>
+      <div id="gameModeBreakdown"></div>
+    </div>
+
+    <div class="result-xp-gained" id="resultXP">
+      <div class="xp-gained-text">+ <span id="xpGainedNum">0</span> XP gagnés</div>
+      <div class="xp-bar-result"><div class="xp-fill-result" id="xpFillResult"></div></div>
+    </div>
+
+    <div class="result-actions">
+      <button class="btn btn-navy" onclick="goToMenu()">← Menu</button>
+      <button class="btn btn-outline" id="btnReplay" onclick="replayScenario()">🔄 Rejouer ce scénario</button>
+      <button class="btn btn-outline" onclick="showView('view-techniques-glossary')">📚 Voir les techniques</button>
+      <button class="btn btn-gold" id="btnShare" onclick="showShareOptions()">📤 Partager</button>
+    </div>
+
+    <!-- Cartes de partage (cachées, générées pour html2canvas) -->
+    <div id="shareCardMode" class="share-card share-card-mode hidden"></div>
+    <div id="shareCardPerf" class="share-card share-card-perf hidden"></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     VIEW: MODE-REVEAL — Révélation du mode
+═══════════════════════════════════════════════════════ -->
+<div id="view-mode-reveal" class="view">
+  <div class="mode-reveal-container">
+    <div class="mode-reveal-title">🎭 Votre style de négociation révélé</div>
+    <div class="mode-reveal-card" id="modeRevealCard">
+      <div class="mode-icon" id="modeRevealIcon">⚔</div>
+      <div class="mode-name" id="modeRevealName">Négociateur Compétitif</div>
+      <div class="mode-bars">
+        <div class="mode-bar-row">
+          <span>⚔ Compétitif</span>
+          <div class="mode-bar-bg"><div class="mode-bar-fill competitive" id="modeBarComp"></div></div>
+          <span id="modePctComp">0%</span>
+        </div>
+        <div class="mode-bar-row">
+          <span>🤝 Harvard</span>
+          <div class="mode-bar-bg"><div class="mode-bar-fill harvard" id="modeBarHarv"></div></div>
+          <span id="modePctHarv">0%</span>
+        </div>
+        <div class="mode-bar-row">
+          <span>👁 Coercitif</span>
+          <div class="mode-bar-bg"><div class="mode-bar-fill coercive" id="modeBarCoerc"></div></div>
+          <span id="modePctCoerc">0%</span>
+        </div>
+      </div>
+      <div class="mode-analysis" id="modeAnalysis"></div>
+    </div>
+    <div class="mode-reveal-actions">
+      <button class="btn btn-gold" onclick="generateAndShareModeCard()">📤 Partager mon profil</button>
+      <button class="btn btn-navy" onclick="goToMenu()">Continuer à jouer →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     VIEW: TECHNIQUES-GLOSSARY — Page référence
+═══════════════════════════════════════════════════════ -->
+<div id="view-techniques-glossary" class="view">
+  <header class="simple-header">
+    <button class="btn-back" onclick="goToMenu()">← Retour</button>
+    <h1>📚 Référence des Techniques</h1>
+    <div class="mode-filter-btns">
+      <button class="filter-btn active" onclick="filterGlossary('all', this)">Toutes</button>
+      <button class="filter-btn competitive" onclick="filterGlossary('competitive', this)">⚔ Compétitif</button>
+      <button class="filter-btn harvard" onclick="filterGlossary('harvard', this)">🤝 Harvard</button>
+      <button class="filter-btn coercive" onclick="filterGlossary('coercive', this)">👁 Coercitif</button>
+    </div>
+  </header>
+  <div class="glossary-grid" id="glossaryGrid"></div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     VIEW: PROFILE — Profil utilisateur
+═══════════════════════════════════════════════════════ -->
+<div id="view-profile" class="view">
+  <header class="simple-header">
+    <button class="btn-back" onclick="goToMenu()">← Retour</button>
+    <h1>Mon Profil</h1>
+  </header>
+  <div class="profile-container">
+    <div class="profile-top">
+      <div class="profile-avatar-section">
+        <div class="avatar-large" id="profileAvatar">👤</div>
+        <button class="btn-sm" onclick="openAvatarModal()">Modifier l'avatar</button>
+      </div>
+      <div class="profile-info">
+        <div class="profile-level-badge">Niveau <span id="profileLevel">1</span></div>
+        <div class="xp-row">
+          <div class="xp-bar-profile"><div class="xp-fill-profile" id="xpFillProfile"></div></div>
+          <span id="profileXPText">0 / 100 XP</span>
+        </div>
+        <div class="profile-stats-grid">
+          <div class="pstat"><div class="pstat-val" id="pGamesPlayed">0</div><div class="pstat-lbl">Parties</div></div>
+          <div class="pstat"><div class="pstat-val" id="pSuccessRate">—%</div><div class="pstat-lbl">Réussite</div></div>
+          <div class="pstat"><div class="pstat-val" id="pAvgScore">—</div><div class="pstat-lbl">Score moy.</div></div>
+          <div class="pstat"><div class="pstat-val" id="pStreak">0</div><div class="pstat-lbl">Série</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="profile-mode-section" id="profileModeSection">
+      <h3>🧠 Mode Négociateur</h3>
+      <div id="profileModeDisplay"></div>
+    </div>
+
+    <div class="profile-techs-section">
+      <h3>⚙️ Techniques maîtrisées</h3>
+      <div id="profileTechsGrid"></div>
+    </div>
+
+    <div class="profile-settings">
+      <h3>⚙️ Paramètres</h3>
+      <div class="settings-row">
+        <label>Langue</label>
+        <select id="langSelect" onchange="updateLanguage(this.value)">
+          <option value="fr">Français</option>
+          <option value="en">English</option>
+          <option value="es">Español</option>
+        </select>
+      </div>
+      <div class="settings-row">
+        <label>Devise</label>
+        <select id="currencySelect" onchange="updateCurrency(this.value)">
+          <option value="EUR">€ Euro</option>
+          <option value="USD">$ Dollar US</option>
+          <option value="CDN">$ Dollar canadien</option>
+        </select>
+      </div>
+      <div class="settings-row">
+        <label>Clé API Claude</label>
+        <div class="api-key-row">
+          <input type="password" id="apiKeyInput" placeholder="sk-ant-..." class="api-key-input">
+          <button class="btn-sm" onclick="saveApiKey()">Sauvegarder</button>
+        </div>
+        <small>Votre clé est stockée localement dans votre navigateur uniquement.</small>
+      </div>
+      <button class="btn btn-outline btn-danger" onclick="confirmReset()">Réinitialiser le profil</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     VIEW: BADGES — Galerie
+═══════════════════════════════════════════════════════ -->
+<div id="view-badges" class="view">
+  <header class="simple-header">
+    <button class="btn-back" onclick="goToMenu()">← Retour</button>
+    <h1>🏆 Mes Badges</h1>
+  </header>
+  <div class="badges-grid" id="badgesGrid"></div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     MODAL: Avatar
+═══════════════════════════════════════════════════════ -->
+<div class="modal-overlay hidden" id="avatarModal">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeAvatarModal()">✕</button>
+    <h2>Choisir mon avatar</h2>
+    <div class="avatar-option-section">
+      <div class="avatar-option-title">📷 Uploader une photo</div>
+      <input type="file" id="photoInput" accept="image/*" onchange="handleFileUpload(event)" class="file-input">
+      <label for="photoInput" class="btn btn-outline">Choisir une image</label>
+      <div class="avatar-preview-box">
+        <div id="avatarPreview" class="avatar-preview">👤</div>
+      </div>
+    </div>
+    <div class="avatar-option-section">
+      <div class="avatar-option-title">😊 Ou choisir un emoji</div>
+      <div class="emoji-grid" id="emojiGrid"></div>
+    </div>
+    <button class="btn btn-navy" onclick="confirmAvatar()">Confirmer</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     MODAL: Notification (badge, niveau, etc.)
+═══════════════════════════════════════════════════════ -->
+<div class="notification-popup hidden" id="notificationPopup">
+  <div class="notif-icon" id="notifIcon">🎉</div>
+  <div class="notif-title" id="notifTitle">Félicitations !</div>
+  <div class="notif-msg" id="notifMsg"></div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     MODAL: Partage social
+═══════════════════════════════════════════════════════ -->
+<div class="modal-overlay hidden" id="shareModal">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeShareModal()">✕</button>
+    <h2>📤 Partager</h2>
+    <div id="shareCardPreview" class="share-preview"></div>
+    <div class="share-btns">
+      <button class="btn btn-navy" onclick="shareToTwitter()">𝕏 Twitter / X</button>
+      <button class="btn btn-outline" onclick="shareToLinkedIn()">LinkedIn</button>
+      <button class="btn btn-gold" onclick="downloadCard()">⬇ Télécharger l'image</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     TOAST — Messages fugitifs
+═══════════════════════════════════════════════════════ -->
+<div class="toast hidden" id="toast"></div>
+
+<script src="data.js"></script>
+<script src="engine.js"></script>
+<script src="ui.js"></script>
+<script src="api.js"></script>
+<script src="share.js"></script>
+<script>
+  // Point d'entrée
+  window.addEventListener('load', initApp);
+</script>
+</body>
+</html>
