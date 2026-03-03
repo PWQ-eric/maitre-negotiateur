@@ -1,26 +1,19 @@
 // ═══════════════════════════════════════════════════════
-// API.JS — Appels à l'API Claude (Anthropic)
-// Tous les prompts du jeu
+// API.JS v3.0 — Appels via proxy Netlify
+// La cle API est sur le serveur Netlify
+// Les joueurs n'ont besoin de rien configurer
 // ═══════════════════════════════════════════════════════
 
-const CLAUDE_API_URL = 'https://api.anthropic.com/v1/messages';
 const CLAUDE_MODEL = 'claude-sonnet-4-20250514';
+
+// Proxy Netlify : notre fonction serverless
+const PROXY_URL = '/.netlify/functions/claude-proxy';
 
 // ── APPEL API DE BASE ─────────────────────────────────
 async function callClaudeAPI(systemPrompt, userPrompt, maxTokens = 1500) {
-  const apiKey = getApiKey();
-  if (!apiKey) {
-    throw new Error('Clé API Claude manquante. Ajoutez-la dans votre profil.');
-  }
-
-  const response = await fetch(CLAUDE_API_URL, {
+  const response = await fetch(PROXY_URL, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-      'anthropic-dangerous-direct-browser-access': 'true'
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       model: CLAUDE_MODEL,
       max_tokens: maxTokens,
@@ -31,16 +24,14 @@ async function callClaudeAPI(systemPrompt, userPrompt, maxTokens = 1500) {
 
   if (!response.ok) {
     const err = await response.json().catch(() => ({}));
-    throw new Error(err.error?.message || `API Error ${response.status}`);
+    throw new Error(err.error || 'Erreur serveur ' + response.status);
   }
 
   const data = await response.json();
-  const text = data.content?.map(c => c.text || '').join('') || '';
-  return text;
+  return data.content?.map(c => c.text || '').join('') || '';
 }
 
 function parseJSON(text) {
-  // Nettoyer les backticks markdown si présents
   const clean = text.replace(/```json\s*/gi, '').replace(/```\s*/gi, '').trim();
   return JSON.parse(clean);
 }
