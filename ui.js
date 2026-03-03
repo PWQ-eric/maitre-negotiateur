@@ -11,6 +11,7 @@ function updateAllUI() {
   renderGlossary();
   renderBadges();
   loadProfileSettings();
+  updateEnvSwitchBtn();
 }
 
 // ── HUD ───────────────────────────────────────────────
@@ -37,6 +38,17 @@ function updateContextToggle() {
   } else {
     toggle.classList.add('hidden');
   }
+  updateEnvSwitchBtn();
+}
+
+function updateEnvSwitchBtn() {
+  // Bouton "Changer d'environnement" visible seulement si on est dans un env
+  // et qu'on n'a PAS les deux actifs simultanément (toggle déjà là)
+  const btn = document.getElementById('envSwitchBtn');
+  if (!btn) return;
+  const hasEnterprise = profile.enterprise?.activated;
+  // Montrer le bouton switch si pas de double-toggle (env seul actif)
+  btn.classList.toggle('hidden', !!hasEnterprise);
 }
 
 // ── MENU ─────────────────────────────────────────────
@@ -206,6 +218,11 @@ function updateResultWithSummary(summary) {
 function renderProfile() {
   const ctx = getCtx();
 
+  // Nom d'utilisateur
+  const usernameText = document.getElementById('usernameText');
+  if (usernameText) usernameText.textContent = profile.username || 'Mon profil';
+  updateProfileHeaderBadge();
+
   // Avatar
   const av = profile.avatar;
   const display = av.type === 'photo' ? `<img src="${av.data}">` : av.data;
@@ -287,15 +304,74 @@ function renderProfileTechs() {
 
 function loadProfileSettings() {
   const langEl = document.getElementById('langSelect');
-  const currEl = document.getElementById('currencySelect');
-  const apiEl = document.getElementById('apiKeyInput');
   if (langEl) langEl.value = profile.language || 'fr';
-  if (currEl) currEl.value = profile.currency || 'EUR';
-  if (apiEl) {
-    const key = getApiKey();
-    apiEl.value = key ? '••••••••••••' : '';
-    apiEl.placeholder = key ? 'Clé enregistrée' : 'sk-ant-...';
+
+  // Devise libre (2 champs)
+  const currName = document.getElementById('currencyNameInput');
+  const currSymbol = document.getElementById('currencySymbolInput');
+  if (currName) currName.value = profile.currencyName || 'Dollar canadien';
+  if (currSymbol) currSymbol.value = profile.currencySymbol || '$';
+
+  // Nom d'utilisateur
+  const nameEl = document.getElementById('usernameText');
+  if (nameEl) nameEl.textContent = profile.username || 'Mon profil';
+  const nameInput = document.getElementById('usernameInput');
+  if (nameInput) nameInput.value = profile.username || '';
+
+  // Badge profil et nom court dans header
+  updateProfileHeaderBadge();
+}
+
+function updateProfileHeaderBadge() {
+  const nameShort = document.getElementById('profileNameShort');
+  if (nameShort) {
+    const name = profile.username || '';
+    nameShort.textContent = name ? name.split(' ')[0] : '';
   }
+  // Badge vert si nouveau badge récemment débloqué
+  const dot = document.getElementById('profileBadgeDot');
+  if (dot) {
+    const ctx = getCtx();
+    const hasNew = (ctx.newBadges && ctx.newBadges.length > 0);
+    dot.classList.toggle('has-new', !!hasNew);
+  }
+}
+
+function toggleUsernameEdit() {
+  const row = document.getElementById('usernameEditRow');
+  const display = document.getElementById('usernameDisplay');
+  if (!row) return;
+  const hidden = row.classList.contains('hidden');
+  row.classList.toggle('hidden', !hidden);
+  display.classList.toggle('hidden', hidden);
+  if (hidden) {
+    const input = document.getElementById('usernameInput');
+    if (input) { input.value = profile.username || ''; input.focus(); }
+  }
+}
+
+function saveUsername() {
+  const input = document.getElementById('usernameInput');
+  if (!input) return;
+  const name = input.value.trim();
+  profile.username = name;
+  saveProfile();
+  document.getElementById('usernameText').textContent = name || 'Mon profil';
+  document.getElementById('usernameEditRow').classList.add('hidden');
+  document.getElementById('usernameDisplay').classList.remove('hidden');
+  updateProfileHeaderBadge();
+  showToast('Nom sauvegardé ✓');
+  // Mettre à jour l'avatar du joueur dans le jeu
+  const playerPanel = document.getElementById('playerNamePanel');
+  if (playerPanel && name) playerPanel.textContent = name;
+}
+
+function updateCurrencyFree() {
+  const nameEl = document.getElementById('currencyNameInput');
+  const symEl = document.getElementById('currencySymbolInput');
+  if (nameEl) profile.currencyName = nameEl.value;
+  if (symEl) profile.currencySymbol = symEl.value;
+  saveProfile();
 }
 
 // ── GLOSSAIRE ─────────────────────────────────────────
@@ -465,4 +541,84 @@ function showToast(msg, duration = 2500) {
   toast.textContent = msg;
   toast.classList.remove('hidden');
   setTimeout(() => toast.classList.add('hidden'), duration);
+}
+
+
+// ── SAVIEZ-VOUS QUE (pendant génération des réponses) ──
+const DYK_FACTS = [
+  { title: "L'ancrage psychologique fonctionne même quand on le sait", text: "Des études montrent que même lorsqu'on est conscient de l'effet d'ancrage, on y reste partiellement sensible. La première offre mentionnée influence toujours le cadre de la négociation.", techId: "anchor" },
+  { title: "Le silence est une technique de négociation redoutable", text: "Après une offre, les négociateurs expérimentés attendent sans parler. Le silence crée un inconfort qui pousse souvent l'autre partie à combler le vide... avec des concessions.", techId: "silence" },
+  { title: "Les meilleurs négociateurs posent 2× plus de questions", text: "Une étude sur des centaines de négociations a révélé que les négociateurs performants posent en moyenne 21% de questions, contre 10% pour les autres.", techId: "socratic" },
+  { title: "L'empathie augmente la valeur totale créée", text: "Comprendre les besoins réels de l'adversaire permet souvent de trouver des solutions que ni l'un ni l'autre n'avait envisagées seul. L'empathie n'est pas une faiblesse — c'est un levier.", techId: "empathy" },
+  { title: "Le recadrage change la perception sans changer les faits", text: "Présenter une concession comme un 'investissement dans la relation' plutôt qu'une 'perte' active différentes zones du cerveau de votre interlocuteur et change sa réponse émotionnelle.", techId: "reframe" },
+  { title: "Les négociateurs Harvard évitent le mot 'non'", text: "Plutôt que de refuser directement, ils utilisent des formulations comme 'Comment pourrions-nous résoudre cela autrement ?' — ce qui maintient la coopération tout en tenant ferme sur les principes.", techId: "harvard" },
+  { title: "La loi de réciprocité est quasi-universelle", text: "Dans toutes les cultures étudiées, recevoir quelque chose crée un sentiment d'obligation de rendre. Dans une négociation, une concession stratégique invite presque toujours une contrepartie.", techId: "reciprocity" },
+  { title: "L'urgence artificielle est détectable — et contre-productive", text: "80% des négociateurs affirment avoir déjà senti une fausse urgence de l'autre côté. Quand elle est détectée, elle détruit la confiance et renforce la résistance.", techId: "deadline" },
+  { title: "Nommer les émotions réduit leur intensité", text: "La technique du 'labelling' (nommer ce que l'autre ressent) active le cortex préfrontal et réduit l'activité de l'amygdale. Scientifiquement, cela calme littéralement la conversation.", techId: "labeling" },
+  { title: "Votre BATNA est votre vraie source de pouvoir", text: "Les négociateurs avec une bonne alternative de rechange obtiennent en moyenne 18% de meilleurs résultats. Avant toute négociation importante, renforcez votre BATNA.", techId: "batna" },
+];
+
+let dykInterval = null;
+let dykCurrentIndex = 0;
+let dykFacts = [];
+
+function showDidYouKnow(selectedTechIds) {
+  const overlay = document.getElementById('didYouKnowOverlay');
+  if (!overlay) return;
+
+  // Construire une liste de faits pertinents (techs choisies en premier)
+  dykFacts = [];
+  // Faits sur les techs choisies
+  selectedTechIds.forEach(id => {
+    const fact = DYK_FACTS.find(f => f.techId === id);
+    if (fact) dykFacts.push(fact);
+  });
+  // Compléter avec d'autres faits aléatoires
+  const others = DYK_FACTS.filter(f => !selectedTechIds.includes(f.techId));
+  const shuffled = others.sort(() => Math.random() - 0.5);
+  dykFacts = [...dykFacts, ...shuffled].slice(0, 5);
+
+  dykCurrentIndex = 0;
+  overlay.classList.remove('hidden');
+  renderDYKSlide(0);
+
+  // Rotation automatique toutes les 3.5 secondes
+  dykInterval = setInterval(() => {
+    dykCurrentIndex = (dykCurrentIndex + 1) % dykFacts.length;
+    renderDYKSlide(dykCurrentIndex);
+  }, 3500);
+}
+
+function renderDYKSlide(idx) {
+  const fact = dykFacts[idx];
+  if (!fact) return;
+
+  document.getElementById('dykTitle').textContent = fact.title;
+  document.getElementById('dykText').textContent = fact.text;
+
+  // Trouver la tech associée
+  const tech = typeof getTechById === 'function' ? getTechById(fact.techId) : null;
+  const techRow = document.getElementById('dykTechRow');
+  if (tech && techRow) {
+    techRow.style.display = 'flex';
+    document.getElementById('dykTechIcon').textContent = tech.icon || '🎯';
+    document.getElementById('dykTechName').textContent = tech.name || '';
+    document.getElementById('dykTechDesc').textContent = tech.shortDesc || '';
+  } else if (techRow) {
+    techRow.style.display = 'none';
+  }
+
+  // Dots de progression
+  const progress = document.getElementById('dykProgress');
+  if (progress) {
+    progress.innerHTML = dykFacts.map((_, i) =>
+      `<div class="didyouknow-dot ${i === idx ? 'active' : ''}"></div>`
+    ).join('');
+  }
+}
+
+function hideDidYouKnow() {
+  const overlay = document.getElementById('didYouKnowOverlay');
+  if (overlay) overlay.classList.add('hidden');
+  if (dykInterval) { clearInterval(dykInterval); dykInterval = null; }
 }
