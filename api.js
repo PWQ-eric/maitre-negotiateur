@@ -138,36 +138,53 @@ async function callGenerateResponsesAPI(step, techs, disruptionActive) {
     ? '\nNOTE: Un événement a perturbé l\'adversaire. Les réponses doivent tenir compte d\'une humeur plus fermée ou imprévisible.'
     : '';
 
+  // Historique complet — sans ça l'IA génère des réponses hors contexte aux étapes 3-5
+  const conversationHistory = game.steps.length > 0
+    ? '\nHISTORIQUE DE LA CONVERSATION :\n' +
+      game.steps.map((s, i) => {
+        const stepData = game.scenario.steps[i];
+        return `Étape ${i + 1} :\n  ${game.scenario.opponentName} : "${stepData?.opponentLine || ''}"\n  Vous avez répondu : "${s.response || ''}"\n  Score : ${s.score}/100`;
+      }).join('\n')
+    : "C'est la première étape.";
+
   const systemPrompt = `Tu es un expert en négociation qui génère des options de réponse concrètes et réalistes.
 Tu dois TOUJOURS répondre avec un JSON valide et UNIQUEMENT du JSON.
 Langue: ${lang === 'fr' ? 'FRANÇAIS' : lang === 'en' ? 'ENGLISH' : 'ESPAÑOL'}`;
 
-  const userPrompt = `Situation: "${step.situation}"
-Réplique de l'adversaire: "${step.opponentLine}"
+  const userPrompt = `CONTEXTE DU SCÉNARIO :
+"${game.scenario?.context || ''}"
+Type de négociation : ${game.scenarioCategory?.name}
+Adversaire : ${game.scenario?.opponentName} (${game.scenario?.opponentRole})
+${conversationHistory}
+
+ÉTAPE ACTUELLE (étape ${game.currentStep + 1}) :
+Situation : "${step.situation}"
+${game.scenario?.opponentName} dit : "${step.opponentLine}"
 ${disruptionNote}
 
-Techniques sélectionnées par le joueur:
+Techniques sélectionnées par le joueur :
 ${techList}
 
-Génère ${techs.length + 3} à ${techs.length + 5} réponses concrètes basées sur ces techniques.
+Génère ${techs.length + 3} à ${techs.length + 5} réponses COHÉRENTES avec tout l'historique ci-dessus.
+IMPORTANT : faire suite logiquement à la conversation — pas de répétitions ni de hors-contexte.
 
 Retourne EXACTEMENT ce JSON:
 [
   {
     "letter": "A",
     "techTag": "⚓ Ancrage haut",
-    "text": "La réponse formulée en discours direct, comme si le joueur la disait vraiment (1-3 phrases percutantes)",
-    "explanation": "Pourquoi cette réponse applique la technique (1 phrase courte)",
+    "text": "La réponse formulée en discours direct (1-3 phrases percutantes)",
+    "explanation": "Pourquoi cette réponse est efficace à CE moment précis de la négociation (1 phrase)",
     "modeWeight": "competitive|harvard|coercive"
   }
 ]
 
 RÈGLES:
-- Les réponses doivent sonner comme de vraies paroles, pas comme des descriptions
-- Varier les approches : directe, diplomatique, créative
+- Réponses cohérentes avec l'arc narratif de la négociation
+- Discours direct, pas des descriptions
+- Varier : directe, diplomatique, créative
 - Au moins 1 réponse par technique choisie
-- Maximum 8 réponses au total
-- Chaque réponse doit être actionnable et crédible dans ce contexte`;
+- Maximum 8 réponses au total`;
 
   const text = await callClaudeAPI(systemPrompt, userPrompt, 1500);
   return parseJSON(text);
@@ -181,18 +198,33 @@ async function callEvaluateAPI(step, response, techs, disruptionActive, failCoun
     ? '\nNOTE CONTEXTUELLE: Un événement perturbateur externe a rendu l\'adversaire moins coopératif — ceci est indépendant de la qualité de la réponse du joueur.'
     : '';
 
+  // Historique pour que l'évaluation tienne compte du contexte complet
+  const conversationHistory = game.steps.length > 0
+    ? '\nHISTORIQUE :\n' +
+      game.steps.map((s, i) => {
+        const stepData = game.scenario.steps[i];
+        return `Étape ${i + 1} : ${game.scenario?.opponentName} dit "${stepData?.opponentLine || ''}" → joueur répond "${s.response || ''}" → score ${s.score}/100`;
+      }).join('\n')
+    : '';
+
   const systemPrompt = `Tu es un expert en négociation qui évalue des réponses pédagogiquement.
 Tu dois TOUJOURS répondre avec un JSON valide et UNIQUEMENT du JSON.
 Langue du feedback: ${lang === 'fr' ? 'FRANÇAIS' : lang === 'en' ? 'ENGLISH' : 'ESPAÑOL'}`;
 
-  const userPrompt = `Contexte de l'étape: "${step.situation}"
-Réplique de l'adversaire: "${step.opponentLine}"
-Techniques utilisées: ${techNames}
-Réponse du joueur: "${response?.text || ''}"
-Compteur d'échecs consécutifs actuels: ${failCounter}
+  const userPrompt = `CONTEXTE DU SCÉNARIO :
+"${game.scenario?.context || ''}"
+Type : ${game.scenarioCategory?.name}
+${conversationHistory}
+
+ÉTAPE ACTUELLE (étape ${game.currentStep + 1}) :
+Situation : "${step.situation}"
+${game.scenario?.opponentName} a dit : "${step.opponentLine}"
+Techniques utilisées : ${techNames}
+Réponse du joueur : "${response?.text || ''}"
+Compteur d'échecs consécutifs : ${failCounter}
 ${disruptionNote}
 
-Évalue cette réponse de négociation.
+Évalue cette réponse en tenant compte du contexte complet de la négociation.
 
 Retourne EXACTEMENT ce JSON:
 {
