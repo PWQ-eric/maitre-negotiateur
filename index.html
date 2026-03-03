@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Maître Négociateur</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;0,700;1,400&family=Playfair+Display:wght@700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&family=Nunito:ital,wght@0,400;0,600;0,700;0,800;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -67,6 +67,10 @@
       <button class="ctx-btn active" id="ctxPersonal" onclick="switchContext('personal')">👤 Personnel</button>
       <button class="ctx-btn" id="ctxEnterprise" onclick="switchContext('enterprise')">🏢 <span id="ctxCompanyName">Entreprise</span></button>
     </div>
+    <!-- Bouton switch env visible quand un seul env actif -->
+    <button class="env-switch-btn hidden" id="envSwitchBtn" onclick="showView('view-env-select')" title="Changer d'environnement">
+      🔄 Changer d'environnement
+    </button>
     <div class="header-right">
       <div class="hud-xp" id="hudXP">
         <span class="hud-level">Niv. <span id="hudLevel">1</span></span>
@@ -75,7 +79,7 @@
       </div>
       <button class="btn-icon" onclick="showView('view-techniques-glossary')" title="Techniques">📚</button>
       <button class="btn-icon" onclick="showView('view-badges')" title="Badges">🏆</button>
-      <button class="btn-icon" onclick="showView('view-profile')" title="Profil">👤</button>
+      <div class="btn-profile-wrap"><button class="btn-icon btn-profile" onclick="showView('view-profile')" title="Mon profil" id="btnProfile">👤 <span id="profileNameShort"></span></button><div class="profile-badge-dot" id="profileBadgeDot"></div></div>
     </div>
   </header>
 
@@ -187,12 +191,19 @@
 
       <!-- Phase : Sélection techniques (Moment 2) -->
       <div class="game-phase hidden" id="phaseTechs">
+        <!-- Situation sticky pour référence -->
+        <div class="situation-sticky" id="situationStickyTechs">
+          <div class="situation-sticky-label">💬 Ce que dit l'adversaire</div>
+          <div class="situation-sticky-speech" id="stickyOpponentLine"></div>
+          <div class="situation-sticky-context" id="stickyStepContext"></div>
+        </div>
         <h3 class="phase-title">Choisissez 2 à 3 techniques</h3>
         <div class="tech-counter" id="techCounter">0 / 3 choisies</div>
-        <div class="techs-grid" id="techsGrid"></div>
-        <button class="btn btn-navy btn-lg" id="btnGenerateResponses" disabled onclick="generateResponses()">
+        <!-- Bouton générer EN HAUT, grisé jusqu'à 2 techs -->
+        <button class="btn btn-navy btn-lg confirm-btn-top" id="btnGenerateResponses" disabled onclick="generateResponses()">
           Générer mes réponses →
         </button>
+        <div class="techs-grid" id="techsGrid"></div>
       </div>
 
       <!-- Phase : Génération des réponses -->
@@ -203,10 +214,11 @@
       <!-- Phase : Choix de réponse (Moments 3 & 4) -->
       <div class="game-phase hidden" id="phaseResponses">
         <h3 class="phase-title">Choisissez votre réponse</h3>
-        <div class="responses-list" id="responsesList"></div>
-        <button class="btn btn-navy btn-lg hidden" id="btnConfirm" onclick="confirmChoice()">
+        <!-- Bouton confirmer EN HAUT, grisé jusqu'à sélection -->
+        <button class="btn btn-navy btn-lg confirm-btn-top" id="btnConfirm" disabled onclick="confirmChoice()">
           Confirmer cette réponse →
         </button>
+        <div class="responses-list" id="responsesList"></div>
       </div>
 
       <!-- Phase : Feedback (Moment 5) -->
@@ -373,6 +385,15 @@
         <button class="btn-sm" onclick="openAvatarModal()">Modifier l'avatar</button>
       </div>
       <div class="profile-info">
+        <div class="username-section">
+          <div class="username-display" id="usernameDisplay" onclick="toggleUsernameEdit()">
+            <span id="usernameText">Mon profil</span> ✏️
+          </div>
+          <div class="username-edit-row hidden" id="usernameEditRow">
+            <input type="text" id="usernameInput" class="username-input" placeholder="Votre prénom ou pseudo" maxlength="30">
+            <button class="btn-sm btn-navy" onclick="saveUsername()">✓</button>
+          </div>
+        </div>
         <div class="profile-level-badge">Niveau <span id="profileLevel">1</span></div>
         <div class="xp-row">
           <div class="xp-bar-profile"><div class="xp-fill-profile" id="xpFillProfile"></div></div>
@@ -409,20 +430,12 @@
       </div>
       <div class="settings-row">
         <label>Devise</label>
-        <select id="currencySelect" onchange="updateCurrency(this.value)">
-          <option value="EUR">€ Euro</option>
-          <option value="USD">$ Dollar US</option>
-          <option value="CDN">$ Dollar canadien</option>
-        </select>
-      </div>
-      <div class="settings-row">
-        <label>Clé API Claude</label>
-        <div class="api-key-row">
-          <input type="password" id="apiKeyInput" placeholder="sk-ant-..." class="api-key-input">
-          <button class="btn-sm" onclick="saveApiKey()">Sauvegarder</button>
+        <div class="currency-fields">
+          <input type="text" id="currencyNameInput" class="currency-name-input" placeholder="ex: Dollar canadien" maxlength="30" oninput="updateCurrencyFree()">
+          <input type="text" id="currencySymbolInput" class="currency-symbol-input" placeholder="$" maxlength="5" oninput="updateCurrencyFree()">
         </div>
-        <small>Votre clé est stockée localement dans votre navigateur uniquement.</small>
       </div>
+
       <button class="btn btn-outline btn-danger" onclick="confirmReset()">Réinitialiser le profil</button>
     </div>
   </div>
@@ -490,6 +503,26 @@
 <!-- ═══════════════════════════════════════════════════════
      TOAST — Messages fugitifs
 ═══════════════════════════════════════════════════════ -->
+<!-- ═══════════════════════════════════════════════════════
+     MODALE : Saviez-vous que (pendant génération des réponses)
+═══════════════════════════════════════════════════════ -->
+<div class="didyouknow-overlay hidden" id="didYouKnowOverlay">
+  <div class="didyouknow-box">
+    <div class="didyouknow-spinner">🧠</div>
+    <div class="didyouknow-label">Saviez-vous que...</div>
+    <div class="didyouknow-title" id="dykTitle">L'écoute active double vos chances de succès</div>
+    <div class="didyouknow-text" id="dykText">Les négociateurs les plus efficaces parlent moins de 40% du temps et posent 2× plus de questions que la moyenne.</div>
+    <div class="didyouknow-tech-row" id="dykTechRow">
+      <div class="didyouknow-tech-icon" id="dykTechIcon">🎯</div>
+      <div class="didyouknow-tech-info">
+        <div class="didyouknow-tech-name" id="dykTechName">Technique associée</div>
+        <div class="didyouknow-tech-desc" id="dykTechDesc"></div>
+      </div>
+    </div>
+    <div class="didyouknow-progress" id="dykProgress"></div>
+  </div>
+</div>
+
 <div class="toast hidden" id="toast"></div>
 
 <script src="data.js"></script>
