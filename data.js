@@ -208,7 +208,19 @@ const BADGES = [
   { id: 'business',    icon: '💼', name: 'Businessman',      desc: 'Score ≥ 80 sur 3 scénarios Affaires consécutifs', condition: s => s.businessStreak >= 3 },
   { id: 'diplomat',    icon: '🏛️', name: 'Diplomate',       desc: 'Réussir Politique ou Crise avec ≥ 75',           condition: s => s.diplomatBadge === true },
   { id: 'coolblood',   icon: '⚡', name: 'Sang-froid',      desc: 'Score ≥ 80 sur une étape avec événement perturbateur', condition: s => s.disruptionScore >= 80 },
-  { id: 'comeback',    icon: '🔁', name: 'Récupération',    desc: 'Réussir après 2 mauvaises réponses consécutives', condition: s => s.comeback === true }
+  { id: 'comeback',    icon: '🔁', name: 'Récupération',    desc: 'Réussir après 2 mauvaises réponses consécutives', condition: s => s.comeback === true },
+
+  // ── 10 NOUVEAUX BADGES ───────────────────────────────
+  { id: 'speedrun',    icon: '⚡', name: 'Fulgurant',       desc: 'Terminer une négociation en 3 étapes ou moins',   condition: s => s.stepsCount <= 3 && s.lastScore >= 70 },
+  { id: 'allstars',    icon: '🌟', name: 'Toutes les étoiles', desc: 'Obtenir 3 étoiles (score ≥ 85) 5 fois de suite', condition: s => s.threeStarsStreak >= 5 },
+  { id: 'versatile',   icon: '🔀', name: 'Polyvalent',      desc: 'Gagner dans 5 catégories de scénarios différentes', condition: s => (s.categoriesWon?.length || 0) >= 5 },
+  { id: 'coercive',    icon: '👁',  name: 'Maître Coercitif', desc: 'Score ≥ 80 en mode coercitif dominant',         condition: s => s.lastModeScore?.coercive >= 60 && s.lastScore >= 80 },
+  { id: 'sensei',      icon: '🥋', name: 'Sensei',          desc: 'Maîtriser 10 techniques différentes (score ≥ 75)', condition: s => Object.values(s.techScores || {}).filter(v => v >= 75).length >= 10 },
+  { id: 'negotiator10',icon: '🏅', name: '10 Victoires',    desc: '10 négociations réussies',                        condition: s => s.successCount >= 10 },
+  { id: 'firstanchor', icon: '⚓', name: 'Premier Ancrage', desc: 'Utiliser la technique Ancrage pour la première fois', condition: s => (s.techUsage?.anchor || 0) >= 1 },
+  { id: 'noconcede',   icon: '🧱', name: 'Mur de granit',   desc: 'Terminer une négociation sans score sous 60 à aucune étape', condition: s => s.allStepsAbove60 === true },
+  { id: 'levelup5',    icon: '🎖️', name: 'Niveau 5',        desc: 'Atteindre le niveau 5',                           condition: s => s.level >= 5 },
+  { id: 'couple',      icon: '💑', name: 'Harmonie',        desc: 'Score ≥ 80 dans un scénario de type Couple/Famille', condition: s => s.coupleBadge === true }
 ];
 
 const EMOJIS_AVATAR = ['👩‍💼','👨‍💼','👩‍⚖️','👨‍⚖️','🕵️‍♀️','🕵️','👩‍🏫','👨‍🏫','👩‍💻','👨‍💻'];
